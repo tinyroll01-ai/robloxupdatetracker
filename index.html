@@ -61,11 +61,10 @@
       const versionEl = document.getElementById('version');
       const statusEl = document.getElementById('status');
       try {
-        const target = 'https://clientsettingscdn.roblox.com/v2/client-version/WindowsPlayer';
-        const res = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(target));
-        const data = await res.json();
-        const json = JSON.parse(data.contents);
-        versionEl.textContent = json.clientVersionUpload || json.version || 'Unknown';
+        const res = await fetch('https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/version-guid.txt');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const version = (await res.text()).trim();
+        versionEl.textContent = version || 'Unknown';
         statusEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
       } catch (e) {
         statusEl.textContent = 'Error fetching — retrying...';
