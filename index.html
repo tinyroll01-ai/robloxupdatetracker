@@ -17,56 +17,15 @@
       min-height: 100vh;
       gap: 48px;
     }
-    .card {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .platform {
-      font-size: 11px;
-      color: #444;
-      letter-spacing: 0.15em;
-      text-transform: uppercase;
-      margin-bottom: 6px;
-    }
-    .label {
-      font-size: 13px;
-      color: #666;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      margin-bottom: 12px;
-    }
-    .version {
-      font-size: 30px;
-      font-weight: bold;
-      color: #00c853;
-      word-break: break-all;
-      text-align: center;
-      padding: 0 1rem;
-    }
-    .divider {
-      width: 1px;
-      height: 60px;
-      background: #222;
-    }
-    .status {
-      font-size: 12px;
-      color: #444;
-      margin-top: 8px;
-    }
-    .dot {
-      display: inline-block;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #00c853;
-      margin-right: 6px;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
+    .card { display: flex; flex-direction: column; align-items: center; }
+    .platform { font-size: 11px; color: #444; letter-spacing: 0.15em; text-transform: uppercase; margin-bottom: 6px; }
+    .label { font-size: 13px; color: #666; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px; }
+    .version { font-size: 30px; font-weight: bold; color: #00c853; word-break: break-all; text-align: center; padding: 0 1rem; }
+    .version.error { color: #ff4444; font-size: 16px; }
+    .divider { width: 1px; height: 60px; background: #222; }
+    .status { font-size: 12px; color: #444; margin-top: 8px; }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #00c853; margin-right: 6px; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
   </style>
 </head>
 <body>
@@ -75,47 +34,64 @@
     <p class="label">Current Roblox Version</p>
     <p class="version" id="win-version">Loading...</p>
   </div>
-
   <div class="divider"></div>
-
   <div class="card">
     <p class="platform">Mac</p>
     <p class="label">Current Roblox Version</p>
     <p class="version" id="mac-version">Loading...</p>
   </div>
-
   <p class="status"><span class="dot"></span><span id="status">Fetching...</span></p>
 
   <script>
-    async function fetchVersions() {
-      const winEl = document.getElementById('win-version');
-      const macEl = document.getElementById('mac-version');
-      const statusEl = document.getElementById('status');
+    const PROXIES = [
+      url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+      url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    ];
 
+    async function fetchWithFallback(url) {
+      for (const proxy of PROXIES) {
+        try {
+          const res = await fetch(proxy(url), { signal: AbortSignal.timeout(4000) });
+          if (res.ok) return await res.json();
+        } catch {}
+      }
+      throw new Error('All proxies failed');
+    }
+
+    async function fetchWindows() {
+      const el = document.getElementById('win-version');
       try {
-        const [winRes, macRes] = await Promise.all([
-          fetch('https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/version-guid.txt'),
-          fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://clientsettingscdn.roblox.com/v2/client-version/MacPlayer'))
-        ]);
-
-        if (winRes.ok) {
-          winEl.textContent = (await winRes.text()).trim() || 'Unknown';
-        }
-
-        if (macRes.ok) {
-          const data = await macRes.json();
-          const json = JSON.parse(data.contents);
-          macEl.textContent = json.clientVersionUpload || json.version || 'Unknown';
-        }
-
-        statusEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
-      } catch (e) {
-        statusEl.textContent = 'Error fetching — retrying...';
+        const res = await fetch('https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/version-guid.txt', { signal: AbortSignal.timeout(4000) });
+        if (!res.ok) throw new Error();
+        el.textContent = (await res.text()).trim() || 'Unknown';
+        el.className = 'version';
+      } catch {
+        el.textContent = 'Failed to fetch';
+        el.className = 'version error';
       }
     }
 
-    fetchVersions();
-    setInterval(fetchVersions, 60000);
+    async function fetchMac() {
+      const el = document.getElementById('mac-version');
+      try {
+        const json = await fetchWithFallback('https://clientsettingscdn.roblox.com/v2/client-version/MacPlayer');
+        const version = json.clientVersionUpload || json.version;
+        if (!version) throw new Error();
+        el.textContent = version;
+        el.className = 'version';
+      } catch {
+        el.textContent = 'Failed to fetch';
+        el.className = 'version error';
+      }
+    }
+
+    async function fetchAll() {
+      await Promise.all([fetchWindows(), fetchMac()]);
+      document.getElementById('status').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    }
+
+    fetchAll();
+    setInterval(fetchAll, 30000);
   </script>
 </body>
 </html>
