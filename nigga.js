@@ -1,53 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Roblox Version Tracker</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: monospace;
+      background: #0a0a0a;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .label {
+      font-size: 13px;
+      color: #666;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .version {
+      font-size: 36px;
+      font-weight: bold;
+      color: #00c853;
+      word-break: break-all;
+      text-align: center;
+      padding: 0 1rem;
+    }
+    .status {
+      font-size: 12px;
+      color: #444;
+      margin-top: 20px;
+    }
+    .dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00c853;
+      margin-right: 6px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+  </style>
+</head>
+<body>
+  <p class="label">Current Roblox Version</p>
+  <p class="version" id="version">Loading...</p>
+  <p class="status"><span class="dot"></span><span id="status">Fetching...</span></p>
 
-<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:220px;padding:2rem 0;">
-  <p style="font-size:13px;color:var(--color-text-secondary);margin:0 0 8px;letter-spacing:0.05em;text-transform:uppercase;">Current Roblox version</p>
-  <p id="version" style="font-size:48px;font-weight:500;color:var(--color-text-primary);margin:0;font-family:var(--font-mono);">—</p>
-  <p id="channel" style="font-size:13px;color:var(--color-text-secondary);margin:8px 0 0;"></p>
-  <p id="status" style="font-size:12px;color:var(--color-text-tertiary);margin:24px 0 0;"></p>
-</div>
+  <script>
+    async function fetchVersion() {
+      const versionEl = document.getElementById('version');
+      const statusEl = document.getElementById('status');
+      try {
+        const url = 'https://clientsettingscdn.roblox.com/v1/client-version/WindowsPlayer';
+        const proxy = 'https://corsproxy.io/?' + encodeURIComponent(url);
+        const res = await fetch(proxy);
+        const data = await res.json();
+        versionEl.textContent = data.clientVersionUpload || data.version || 'Unknown';
+        statusEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
+      } catch (e) {
+        statusEl.textContent = 'Error fetching — retrying...';
+      }
+    }
 
-<script>
-async function fetchVersion() {
-  const statusEl = document.getElementById('status');
-  const versionEl = document.getElementById('version');
-  const channelEl = document.getElementById('channel');
-  statusEl.textContent = 'Fetching…';
-
-  try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 200,
-        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
-        system: 'You are a helper that returns ONLY a JSON object with no extra text. No markdown, no explanation.',
-        messages: [{
-          role: 'user',
-          content: 'Search for the current latest Roblox client version string (e.g. version-xxxxxxxxxxxxxxxx). Return ONLY valid JSON like: {"version":"version-abc123","channel":"LIVE"}'
-        }]
-      })
-    });
-
-    const data = await res.json();
-    const text = data.content
-      .filter(b => b.type === 'text')
-      .map(b => b.text)
-      .join('');
-
-    const cleaned = text.replace(/```json|```/g, '').trim();
-    const json = JSON.parse(cleaned);
-
-    versionEl.textContent = json.version || '—';
-    channelEl.textContent = json.channel ? 'Channel: ' + json.channel : '';
-    const now = new Date();
-    statusEl.textContent = 'Last updated ' + now.toLocaleTimeString();
-  } catch (e) {
-    statusEl.textContent = 'Error fetching version. Retrying…';
-    console.error(e);
-  }
-}
-
-fetchVersion();
-setInterval(fetchVersion, 60000);
-</script>
+    fetchVersion();
+    setInterval(fetchVersion, 60000);
+  </script>
+</body>
+</html>
