@@ -43,19 +43,11 @@
   <p class="status"><span class="dot"></span><span id="status">Fetching...</span></p>
 
   <script>
-    const PROXIES = [
-      url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-      url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    ];
-
     async function fetchWithFallback(url) {
-      for (const proxy of PROXIES) {
-        try {
-          const res = await fetch(proxy(url), { signal: AbortSignal.timeout(4000) });
-          if (res.ok) return await res.json();
-        } catch {}
-      }
-      throw new Error('All proxies failed');
+      const res = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(url), { signal: AbortSignal.timeout(10000) });
+      if (!res.ok) throw new Error('proxy failed');
+      const wrapper = await res.json();
+      return JSON.parse(wrapper.contents);
     }
 
     async function fetchWindows() {
@@ -75,9 +67,8 @@
       const el = document.getElementById('mac-version');
       try {
         const json = await fetchWithFallback('https://clientsettingscdn.roblox.com/v2/client-version/MacPlayer');
-        const version = json.clientVersionUpload || json.version;
-        if (!version) throw new Error();
-        el.textContent = version;
+        const version = json.clientVersionUpload || json.version || json.clientVersion || Object.values(json).find(v => typeof v === 'string' && v.startsWith('version-'));
+        el.textContent = version || JSON.stringify(json);
         el.className = 'version';
       } catch {
         el.textContent = 'Failed to fetch';
