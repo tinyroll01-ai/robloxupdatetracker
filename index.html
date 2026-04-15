@@ -61,11 +61,11 @@
       const versionEl = document.getElementById('version');
       const statusEl = document.getElementById('status');
       try {
-        const url = 'https://clientsettingscdn.roblox.com/v1/client-version/WindowsPlayer';
-        const proxy = 'https://corsproxy.io/?' + encodeURIComponent(url);
-        const res = await fetch(proxy);
+        const target = 'https://clientsettingscdn.roblox.com/v2/client-version/WindowsPlayer';
+        const res = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(target));
         const data = await res.json();
-        versionEl.textContent = data.clientVersionUpload || data.version || 'Unknown';
+        const json = JSON.parse(data.contents);
+        versionEl.textContent = json.clientVersionUpload || json.version || 'Unknown';
         statusEl.textContent = 'Updated ' + new Date().toLocaleTimeString();
       } catch (e) {
         statusEl.textContent = 'Error fetching — retrying...';
